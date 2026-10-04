@@ -1,0 +1,25 @@
+{
+  "name": "atomic-workflow-tap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Clone-trim of atomic-crash-course: sessions, keepContext, workflows, intercom",
+  "scripts": {
+    "test": "tsc --noEmit && tsx --test test/primitives.test.ts",
+    "smoke": "tsx src/smoke.ts",
+    "agent": "tsx sdk-demo/agent.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "dependencies": {
+    "@bastani/atomic": "0.9.25",
+    "typebox": "1.3.27"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.0",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
