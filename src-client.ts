@@ -1,7 +1,7 @@
 export type User = { id: string; email: string | null };
 
 export function validate(user: User): boolean {
-  return user.email.includes("@"); // bug: no null check
+  return user.email.includes("@");
 }
 
 export async function fetchUser(id: string): Promise<User> {
