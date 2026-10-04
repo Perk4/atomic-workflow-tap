@@ -1,0 +1,8 @@
+{
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "compression_ratio": 0.5,
+    "preserve_recent": 2
+  }
+}
