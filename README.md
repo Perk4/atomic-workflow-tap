@@ -4,7 +4,7 @@ A clone-trim of [atomic-crash-course](https://github.com/bastani-inc/atomic-cras
 
 The source video is [Agentic engineering: Context, subagents, and verifiable workflows in practice with any stack](https://www.youtube.com/watch?v=mkQkFYPcBIQ). This repo keeps the Atomic APIs that video walks: forked sessions, `<keepContext>`, a multi-stage workflow with a human gate, and Intercom records between sessions.
 
-It is not [Perk4/agent-graph-loop](https://github.com/Perk4/agent-graph-loop) or a from-scratch control graph. Those teach a homemade DAG. This tap keeps Atomic's `SessionManager` tree and `workflow()` files from the crash-course lessons.
+It is not [Perk4/agent-graph-loop](https://github.com/Perk4/agent-graph-loop) or [Perk4/control-graph-tap](https://github.com/Perk4/control-graph-tap). Those are from-scratch control graphs. This tap is a clone-trim of Atomic: `SessionManager`, `prepareCompactionBoundary` / `startNewContextWindow`, and crash-course `workflow()` files.
 
 Upstream product: [bastani-inc/atomic](https://github.com/bastani-inc/atomic). Docs: [docs.bastani.ai](https://docs.bastani.ai/).
 
@@ -18,7 +18,7 @@ npm test
 npm run smoke
 ```
 
-`npm test` and `npm run smoke` do not need an API key. They call `@bastani/atomic`'s `SessionManager` and load the crash-course `workflow()` files.
+`npm test` and `npm run smoke` do not need an API key. They call `@bastani/atomic` `SessionManager`, the credential-free fresh compaction rung, and `run()` from `@bastani/atomic/workflows` with a stub `prompt` adapter.
 
 The live agent path from crash-course lesson 4.3 still needs a provider. Set `ANTHROPIC_API_KEY`, then:
 
@@ -26,7 +26,7 @@ The live agent path from crash-course lesson 4.3 still needs a provider. Set `AN
 npm run agent
 ```
 
-Atomic also accepts `/login` and other provider keys. See [Authentication](https://docs.bastani.ai/getting-started/authentication.md).
+Atomic also accepts `/login` and other provider keys. See [Authentication](https://docs.bastani.ai/getting-started/authentication.md). Always `await session.dispose()` in `finally`; `sdk-demo/agent.ts` does that.
 
 ## Walk the APIs in video order
 
@@ -38,13 +38,13 @@ Crash-course lesson 2.1. Sessions are JSONL trees. `SessionManager.branch` start
 
 Docs: [Sessions](https://docs.bastani.ai/sessions.md), [Session format](https://docs.bastani.ai/session-format.md).
 
-### 2. Context: protected text that should survive compaction
+### 2. Context: protected text that survives compaction
 
-Crash-course lesson 2.2. Wrap a short rule in `<keepContext>` on its own lines. Atomic's `/compact` planner may delete other lines. It must not delete that span.
+Crash-course lesson 2.2. Wrap a short rule in `<keepContext>` on its own lines. Atomic's compact planner may delete other lines. It must not delete that span.
 
-The keyless test appends the same user message the lesson uses and asserts `buildSessionContext()` still contains the tags and the rule. That proves the transcript stores the protected block.
+The keyless test puts that tagged message *before* the default `preserve_recent: 2` tail, then calls the public `prepareCompactionBoundary` + `startNewContextWindow` pair. The fresh rung deletes the compactable region as one range and splits around protected spans. The compacted text still contains the tags and the rule. Unprotected filler from that region is gone.
 
-It does not run `session.compact()`. Compaction planning needs a model, and `keepContextLineNumbers` is not a public export. Live proof is `/compact` in Atomic or `session.compact()` after `npm run agent`.
+That is not `session.compact()`. The planned `/compact` rung still needs a model. Fresh-rung proof does not.
 
 Docs: [Context and compaction](https://docs.bastani.ai/compaction.md). Settings in `.atomic/settings.json` match the lesson knobs.
 
@@ -54,7 +54,7 @@ Crash-course lessons 5.2–5.4. `.atomic/agents/strict-inspector.md` is the less
 
 The keyless test writes those entry types through `SessionManager.appendCustomEntry` with the lesson 5.3 task text and matching `messageId` values.
 
-It does not start the local Intercom broker. Live messaging needs two connected Atomic sessions (two terminals, or two SDK sessions with Intercom enabled).
+There is no public send-intercom / spawn-subagent API that runs without a model. The starter does not ship a keyless broker, so this tap does not invent one. Live messaging needs two connected Atomic sessions (two terminals, or two SDK sessions with Intercom enabled).
 
 Docs: [Subagents](https://docs.bastani.ai/subagents.md), [Intercom](https://docs.bastani.ai/intercom.md).
 
@@ -62,9 +62,9 @@ Docs: [Subagents](https://docs.bastani.ai/subagents.md), [Intercom](https://docs
 
 Crash-course lessons 6.3–6.4. `.atomic/workflows/explain-file.ts` is one `ctx.task` stage. `.atomic/workflows/release-gate.ts` runs `summarize-changes`, then `ctx.ui.select`, `ctx.ui.confirm`, and `ctx.ui.input`.
 
-The keyless test imports those files and asserts `workflow()` stamped `__piWorkflow`, names, and schemas. That is the real authoring API.
+The keyless test imports those files, registers them with `createRegistry()`, and executes `release-gate` through `run(..., { durability: { mode: "memory" }, adapters: { prompt }, ui })`. The prompt adapter stubs `ctx.task`. `ui.confirm` returns `false`, so the workflow `ctx.exit`s with `decision: "hold"`. Missing UI adapters are not consent.
 
-It does not execute `ctx.task` or the UI gate. Those need a running Atomic session. With a provider and `atomic -a` in this repo:
+With a provider and `atomic -a` in this repo:
 
 ```text
 /workflow reload
@@ -90,8 +90,8 @@ Atomic's MIT license is in `LICENSE` because this tap depends on and copies less
 
 ## Gaps versus the video
 
-- Verbatim compaction that splits deletion ranges around `<keepContext>` only runs inside Atomic's compact planner. Keyless tests store the tagged message. They do not compact.
+- Planned `/compact` still needs a model. Keyless tests run the credential-free fresh rung (`startNewContextWindow`), which splits deletions around `<keepContext>` without ranking lines.
 - Live Intercom delivery uses a same-machine broker. Keyless tests store the session entries Intercom writes. They do not deliver.
-- `ctx.task` and `ctx.ui.*` gates run only in a live Atomic workflow. Keyless tests load the definitions.
+- `ctx.task` in a live Atomic session talks to a model. Keyless `run()` substitutes a `prompt` adapter. The UI gate is real.
 
-If the starter had no lesson for an API, this README would say so instead of faking a runtime. All four APIs are in the starter. The gap is keyless execution of the model-backed steps.
+If the starter had no lesson for an API, this README would say so instead of faking a runtime. All four APIs are in the starter. The remaining gap is model-backed planning and live Intercom delivery.

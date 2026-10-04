@@ -13,4 +13,8 @@ session.subscribe((event) => {
   }
 });
 
-await session.prompt("What files are in the current directory?");
+try {
+  await session.prompt("What files are in the current directory?");
+} finally {
+  await session.dispose();
+}

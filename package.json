@@ -8,7 +8,8 @@
     "test": "tsc --noEmit && tsx --test test/primitives.test.ts",
     "smoke": "tsx src/smoke.ts",
     "agent": "tsx sdk-demo/agent.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check": "npm test && npm run smoke"
   },
   "engines": {
     "node": ">=22.14.0"
